@@ -1,4 +1,7 @@
+# My stuff
 *.class
+*.py
+*.py~
 
 *.py[cod]
 
