@@ -27,7 +27,7 @@ class Protocol:
         
         f = open("output.txt", "w")
         
-        f.write('<?xml version="1.0"?>\n')
+        f.write('<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n')
         f.write("<AddressList>\n")
         
         for x in xs: 

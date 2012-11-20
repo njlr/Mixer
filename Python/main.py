@@ -39,7 +39,7 @@ address = args[1]
 protocol = Protocol(id, address)
 
 
-pre_runtime = create_runtime(id, players, 1) #(len(players) -1)//2)
+pre_runtime = create_runtime(id, players, (len(players) - 1)//2)
 
 pre_runtime.addCallback(protocol.run)
 pre_runtime.addErrback(errorHandler)

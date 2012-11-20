@@ -2,7 +2,7 @@ package mixer.tools;
 
 import mixer.Utils;
 
-public class AddressStringToNumericString {
+public strictfp final class AddressStringToNumericString {
 	
 	public static void main(String[] args) {
 		
