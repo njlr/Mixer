@@ -12,11 +12,7 @@ from test import test_shuffle
 
 
 
-print 1 ^ 1 ^ 1
-print 1 ^ 1 ^ 0
-print 1 ^ 0 ^ 0
-
-print reduce(lambda x, y: x ^ y, [1, 1, 0])
+test_shuffle(data_oblivious_shuffle, [1, 2, 3, 4, 5, 6], [1, 2, 3, 4, 5, 6], 99999999)
 
 
 

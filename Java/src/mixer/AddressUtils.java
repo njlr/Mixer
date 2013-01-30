@@ -1,8 +1,8 @@
 package mixer;
 
-public strictfp final class Utils {
+public strictfp final class AddressUtils {
 	
-	private Utils() {
+	private AddressUtils() {
 		
 		super();
 	}

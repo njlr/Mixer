@@ -1,6 +1,6 @@
 package mixer.tools;
 
-import mixer.Utils;
+import mixer.AddressUtils;
 
 public strictfp final class AddressStringToNumericString {
 	
@@ -10,7 +10,7 @@ public strictfp final class AddressStringToNumericString {
 			
 			String addressString = args[0];
 			
-			String numericString = Utils.addressStringToNumericString(addressString);
+			String numericString = AddressUtils.addressStringToNumericString(addressString);
 			
 			System.out.println(numericString);
 		}

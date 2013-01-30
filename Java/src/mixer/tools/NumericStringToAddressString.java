@@ -2,7 +2,7 @@ package mixer.tools;
 
 import java.io.UnsupportedEncodingException;
 
-import mixer.Utils;
+import mixer.AddressUtils;
 
 public strictfp class NumericStringToAddressString {
 	
@@ -12,7 +12,7 @@ public strictfp class NumericStringToAddressString {
 			
 			String numericString = new String(args[0].getBytes("UTF-8"), "UTF-8");
 			
-			String addressString = Utils.numericStringToAddressString(numericString);
+			String addressString = AddressUtils.numericStringToAddressString(numericString);
 			
 			System.out.println(addressString);
 		}

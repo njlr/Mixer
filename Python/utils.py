@@ -35,7 +35,8 @@ def data_oblivious_shuffle(xs, random_swap_function = random_swap):
     
     for i in range(len(xs)): 
         
-        for j in range(i) + range(i + 1, len(xs)): 
+        #for j in range(i) + range(i + 1, len(xs)): 
+        for j in range(len(xs)): 
         
             x, y = random_swap_function(xs[i], xs[j])
             
