@@ -4,6 +4,11 @@ import mixer.AddressUtils;
 
 public strictfp final class AddressStringToNumericString {
 	
+	private AddressStringToNumericString() {
+		
+		super();
+	}
+	
 	public static void main(String[] args) {
 		
 		if (args.length == 1) {

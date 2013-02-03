@@ -4,7 +4,12 @@ import java.io.UnsupportedEncodingException;
 
 import mixer.AddressUtils;
 
-public strictfp class NumericStringToAddressString {
+public strictfp final class NumericStringToAddressString {
+	
+	private NumericStringToAddressString() {
+		
+		super();
+	}
 	
 	public static void main(String[] args) throws UnsupportedEncodingException {
 		
