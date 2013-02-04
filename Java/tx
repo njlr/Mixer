@@ -1,0 +1,24 @@
+Transaction:
+
+    (For each address i in A)
+
+        Input:
+
+            Previous tx: <a standard tx with an output >= b to i>
+            Index: <an appropriate index from the previous tx>
+            scriptSig: <signature from i> <public key of i> SIGHASH_ALL
+
+    (For each address j in B)
+
+        Output:
+
+            Value: X BTC
+            scriptPubKey: OP_DUP OP_HASH160 <hash of j's public key> OP_EQUALVERIFY OP_CHECKSIG
+            
+---------------------------------------------------------------
+
+
+a send request is a helper for creating transactions. It can be completed by a wallet. 
+
+
+354149053730799
