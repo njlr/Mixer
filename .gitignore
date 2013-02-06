@@ -1,6 +1,7 @@
 # My stuff
 *.class
 *~
+*.wallet.*
 
 *.py[cod]
 
