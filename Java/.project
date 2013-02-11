@@ -3,6 +3,7 @@
 	<name>Java</name>
 	<comment></comment>
 	<projects>
+		<project>bitcoinj</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

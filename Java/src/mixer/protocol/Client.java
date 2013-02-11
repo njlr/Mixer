@@ -1,121 +1,138 @@
 package mixer.protocol;
 
-import java.net.SocketAddress;
+import java.net.InetSocketAddress;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-import mixer.protocol.messages.MessagePlayerInput;
-import mixer.protocol.messages.MessageSignature;
-import mixer.protocol.messages.MessageTransaction;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.jboss.netty.bootstrap.ClientBootstrap;
-import org.jboss.netty.channel.ChannelHandlerContext;
+import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;
-import org.jboss.netty.channel.ChannelStateEvent;
 import org.jboss.netty.channel.Channels;
-import org.jboss.netty.channel.MessageEvent;
-import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.jboss.netty.handler.codec.serialization.ClassResolvers;
 import org.jboss.netty.handler.codec.serialization.ObjectDecoder;
 import org.jboss.netty.handler.codec.serialization.ObjectEncoder;
 
-public strictfp final class Client extends SimpleChannelHandler {
+import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.util.concurrent.AbstractExecutionThreadService;
+
+public strictfp final class Client extends AbstractExecutionThreadService {
 	
-	private static final Object LOCK = new Object();
+	private final String sourceAddress; 
+	private final Set<String> targetAddresses;
 	
-	private final ClientBootstrap clientBootstrap;
+	private final InetSocketAddress hostAddress;
 	
-	private final String oldAddress;
-	private final Set<String> freshAddresses;
+	private final ExecutorService bossExecutor;
+	private final ExecutorService workerExecutor;
 	
-	private boolean signingLock;
+	private final ClientBootstrap bootstrap;
 	
-	public Client(String oldAddress, Set<String> freshAddresses) {
-		 
-		 super();
-		 
-		 this.oldAddress = oldAddress;
-		 this.freshAddresses = freshAddresses;
-		 
-		 this.clientBootstrap = new ClientBootstrap(
-				 new NioClientSocketChannelFactory(
-						 Executors.newCachedThreadPool(), 
-						 Executors.newCachedThreadPool()));
-		 
-		 this.clientBootstrap.setPipelineFactory(
-				 new ChannelPipelineFactory() {
+	private AtomicBoolean startUpLock;
+	
+	private Channel clientChannel;
+	
+	private final AtomicBoolean keepRunning;
+	private final Object lock;
+	
+	public Client(final String sourceAddress, final Set<String> targetAddresses, final InetSocketAddress hostAddress) {
+		
+		super();
+		
+		this.sourceAddress = sourceAddress;
+		this.targetAddresses = ImmutableSet.copyOf(targetAddresses);
+		
+		this.hostAddress = hostAddress;
+		
+		this.bossExecutor = Executors.newCachedThreadPool();
+		this.workerExecutor = Executors.newCachedThreadPool();
+		
+		this.bootstrap = new ClientBootstrap(
+				new NioClientSocketChannelFactory(
+						this.bossExecutor, 
+						this.workerExecutor));
+		
+		this.bootstrap.setPipelineFactory(
+				new ChannelPipelineFactory() {
 					
 					@Override
 					public ChannelPipeline getPipeline() throws Exception {
 						
 						ChannelPipeline pipeline = Channels.pipeline();
 						
-						// TODO: SSL?
-						
 						pipeline.addLast("ObjectEncoder", new ObjectEncoder());
-						pipeline.addLast("ObjectDecoder", new ObjectDecoder(ClassResolvers.weakCachingResolver(ClassLoader.getSystemClassLoader())));
+						pipeline.addLast("ObjectDecoder", new ObjectDecoder(ClassResolvers.weakCachingConcurrentResolver(ClassLoader.getSystemClassLoader())));
 						
-						pipeline.addLast("Client", Client.this);
+						pipeline.addLast("ClientHandler", new ClientHandler(Client.this.sourceAddress, Client.this.targetAddresses));
 						
 						return pipeline;
 					}
 				});
-		 
-		 this.signingLock = false;
-	}
-	
-	public void start(SocketAddress hostAddress) {
 		
-		this.clientBootstrap.connect(hostAddress);
-	}
-	
-	@Override
-	public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+		this.startUpLock = new AtomicBoolean(false);
 		
-		super.channelConnected(ctx, e);
+		this.keepRunning = new AtomicBoolean(true);
 		
-		e.getChannel().write(new MessagePlayerInput(this.oldAddress, this.freshAddresses));
+		this.lock = new Object();
 	}
 	
 	@Override
-	public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
+	protected void startUp() throws Exception {
 		
-		super.messageReceived(ctx, e);
+		super.startUp();
 		
-		if (e.getMessage() instanceof MessageTransaction) {
+		Preconditions.checkState(!this.startUpLock.getAndSet(true), "This client has already been used. ");
+		
+		this.clientChannel = this.bootstrap.connect(this.hostAddress).awaitUninterruptibly().getChannel();
+	}
+	
+	@Override
+	protected void run() throws Exception {
+		
+		while (this.keepRunning.get()) {
 			
-			synchronized (LOCK) {
+			try {
 				
-				if (!this.signingLock) {
+				synchronized (lock) {
 					
-					this.signingLock = true;
-					
-					MessageTransaction m = (MessageTransaction) e.getMessage();
-					
-					if (this.isTransactionFair(m.getTransaction())) {
-						
-						String signature = this.signTransaction(m.getTransaction());
-						
-						e.getChannel().write(new MessageSignature(signature));
-					}
-					else {
-						
-						throw new Exception("Transaction is not fair! ");
-					}
+					this.lock.wait();
 				}
+			}
+			catch (InterruptedException e) {
+				
 			}
 		}
 	}
 	
-	private boolean isTransactionFair(String transaction) { // TODO: Transaction
+	@Override
+	protected void triggerShutdown() {
 		
-		return true; // TODO: Matches Python output
+		super.triggerShutdown();
+		
+		this.keepRunning.set(false);
+		
+		synchronized (lock) {
+			
+			this.lock.notifyAll();
+		}
 	}
 	
-	private String signTransaction(String transaction) { // TODO: Transaction // TODO: Signature
+	@Override
+	protected void shutDown() throws Exception {
 		
-		return "SIGNED(" + this.oldAddress + ", " + transaction.hashCode() + ")"; // TODO
+		super.shutDown();
+		
+		System.out.println("Shutting down... ");
+		
+		this.clientChannel.close().awaitUninterruptibly();
+		
+		this.bossExecutor.shutdown();
+		this.workerExecutor.shutdown();
+		
+		this.bootstrap.releaseExternalResources();
 	}
 }

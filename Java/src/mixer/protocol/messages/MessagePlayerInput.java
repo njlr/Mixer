@@ -2,30 +2,36 @@ package mixer.protocol.messages;
 
 import java.util.Set;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 
 public strictfp final class MessagePlayerInput extends Message {
 	
 	private static final long serialVersionUID = 7437481367004735495L;
 	
-	private final String oldAddress;
-	private final Set<String> freshAddresses;
+	private final String sourceAddress;
+	private final Set<String> targetAddresses;
 	
-	public String getOldAddress() {
+	public String getSourceAddress() {
 		
-		return this.oldAddress;
+		return this.sourceAddress;
 	}
 	
-	public Set<String> getFreshAddresses() {
+	public Set<String> getTargetAddresses() {
 		
-		return ImmutableSet.copyOf(this.freshAddresses);
+		return ImmutableSet.copyOf(this.targetAddresses);
 	}
 	
-	public MessagePlayerInput(String oldAddress, Set<String> freshAddresses) {
+	public MessagePlayerInput(final String sourceAddress, final Set<String> targetAddresses) {
 		
 		super();
 		
-		this.oldAddress = oldAddress;
-		this.freshAddresses = ImmutableSet.copyOf(freshAddresses);
+		Preconditions.checkArgument(sourceAddress != null);
+		
+		Preconditions.checkArgument(targetAddresses != null);
+		Preconditions.checkArgument(targetAddresses.size() > 0);
+		
+		this.sourceAddress = sourceAddress;
+		this.targetAddresses = ImmutableSet.copyOf(targetAddresses);
 	}
 }

@@ -2,7 +2,6 @@ package mixer.tools;
 
 import java.io.File;
 import java.math.BigInteger;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import com.google.bitcoin.core.BlockChain;
@@ -72,7 +71,7 @@ public strictfp final class WalletPreparationTool {
 		final PeerGroup peerGroup = new PeerGroup(wallet.getNetworkParameters(), blockChain);
 		
 		peerGroup.setUserAgent("WalletPreparationTool", "1.0");
-		peerGroup.addWallet(wallet);
+		// peerGroup.addWallet(wallet);
         
         if (wallet.getNetworkParameters().equals(NetworkParameters.prodNet())) {
             
@@ -132,7 +131,8 @@ public strictfp final class WalletPreparationTool {
 			
 			peerGroup.broadcastTransaction(sendRequest.tx).get();
 			
-			System.out.println("Broadcasting complete");
+			System.out.println("Broadcasting complete. ");
+			System.out.println();
 		}
 		else {
 			

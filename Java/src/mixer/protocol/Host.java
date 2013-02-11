@@ -2,188 +2,240 @@ package mixer.protocol;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.UnknownHostException;
-import java.util.HashSet;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import mixer.protocol.messages.MessagePlayerInput;
+import mixer.MixerUtils;
+import mixer.protocol.messages.MessageTransaction;
 
 import org.jboss.netty.bootstrap.ServerBootstrap;
-import org.jboss.netty.channel.ChannelHandlerContext;
+import org.jboss.netty.channel.Channel;
 import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;
-import org.jboss.netty.channel.ChannelStateEvent;
 import org.jboss.netty.channel.Channels;
-import org.jboss.netty.channel.MessageEvent;
-import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.channel.group.ChannelGroup;
 import org.jboss.netty.channel.group.DefaultChannelGroup;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import org.jboss.netty.handler.codec.serialization.ClassResolvers;
 import org.jboss.netty.handler.codec.serialization.ObjectDecoder;
 import org.jboss.netty.handler.codec.serialization.ObjectEncoder;
+import org.jboss.netty.util.internal.ConcurrentHashMap;
 
-public strictfp final class Host extends SimpleChannelHandler {
+import com.google.common.base.Preconditions;
+import com.google.common.util.concurrent.AbstractIdleService;
+
+public strictfp final class Host extends AbstractIdleService {
 	
 	private static final Object LOCK = new Object();
 	
-	private final int numberOfPlayers;
+	private final int port;
+	private final int playerCount;
 	
-	private final ServerBootstrap serverBootstrap;
+	private AtomicInteger index;
 	
-	private final ChannelGroup channelGroup;
+	private final Map<Integer, String> sourceAddresses;
+	private final Map<Integer, Set<String>> targetAddresses;
 	
-	private final Set<String> oldAddresses;
-	private final Set<String> freshAddresses;
+	private final Map<Integer, String> signatures;
 	
 	private String transaction;
 	
-	public Host(int numberOfPlayers) {
+	private final ChannelGroup channelGroup;
+	
+	private final ExecutorService bossExecutor;
+	private final ExecutorService workerExecutor;
+	
+	private final ServerBootstrap bootstrap;
+	
+	private AtomicBoolean startUpLock;
+	
+	private Channel serverChannel;
+	
+	public Host(final int port, final int playerCount) {
 		
 		super();
 		
-		this.numberOfPlayers = numberOfPlayers;
+		this.port = port;
+		this.playerCount = playerCount;
 		
-		this.serverBootstrap = new ServerBootstrap(
+		this.index = new AtomicInteger(0);
+		
+		this.sourceAddresses = new ConcurrentHashMap<Integer, String>(this.playerCount);
+		this.targetAddresses = new ConcurrentHashMap<Integer, Set<String>>(this.playerCount);
+		
+		this.signatures = new ConcurrentHashMap<Integer, String>(this.playerCount);
+		
+		this.transaction = null;
+		
+		this.channelGroup = new DefaultChannelGroup("Players");
+		
+		this.bossExecutor = Executors.newCachedThreadPool();
+		this.workerExecutor = Executors.newCachedThreadPool();
+		
+		this.bootstrap = new ServerBootstrap(
 				new NioServerSocketChannelFactory(
-						Executors.newCachedThreadPool(),
-						Executors.newCachedThreadPool()));
+						this.bossExecutor, 
+						this.workerExecutor));
 		
-		this.serverBootstrap.setPipelineFactory(new ChannelPipelineFactory() {
-			
-			@Override
-			public ChannelPipeline getPipeline() throws Exception {
-				
-				ChannelPipeline pipeline = Channels.pipeline();
-				
-				// TODO: SSL?
-				
-				pipeline.addLast("ObjectEncoder", new ObjectEncoder());
-				pipeline.addLast("ObjectDecoder", new ObjectDecoder(ClassResolvers.weakCachingConcurrentResolver(ClassLoader.getSystemClassLoader())));
-				
-				pipeline.addLast("Host", Host.this);
-				
-				return pipeline;
-			}
-		});
-		
-		this.channelGroup = new DefaultChannelGroup("Clients");
-		
-		this.oldAddresses = new HashSet<String>();
-		this.freshAddresses = new HashSet<String>();
-	}
-	
-	public void start(int port) throws UnknownHostException {
-		
-		this.serverBootstrap.bind(new InetSocketAddress(InetAddress.getLocalHost(), port));
-	}
-	
-	@Override
-	public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-		
-		super.channelConnected(ctx, e);
-		
-		synchronized (LOCK) {
-			
-			if (this.channelGroup.size() < this.numberOfPlayers) {
-				
-				this.channelGroup.add(e.getChannel());
-			}
-			else {
-				
-				e.getChannel().disconnect();
-			}
-		}
-	}
-	
-	@Override
-	public void channelDisconnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
-		
-		super.channelDisconnected(ctx, e);
-		
-		synchronized (LOCK) {
-			
-			this.channelGroup.remove(e.getChannel());
-		}
-	}
-	
-	@Override
-	public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
-		
-		super.messageReceived(ctx, e);
-		
-		if (e.getMessage() instanceof MessagePlayerInput) {
-			
-			synchronized (LOCK) {
-				
-				MessagePlayerInput m = (MessagePlayerInput) e.getMessage();
-				
-				this.addOldAddress(m.getOldAddress());
-				this.addFreshAddresses(m.getFreshAddresses());
-				
-				if ((this.oldAddresses.size() == this.numberOfPlayers) && 
-						(this.freshAddresses.size() == this.numberOfPlayers)) {
+		this.bootstrap.setPipelineFactory(
+				new ChannelPipelineFactory() {
 					
-					this.transaction = "1 BTC FROM ";
-					
-					for (String i : this.oldAddresses) {
+					@Override
+					public ChannelPipeline getPipeline() throws Exception {
 						
-						this.transaction += i + " ";
-					}
-					
-					this.transaction += "TO ";
-					
-					for (String i : this.freshAddresses) {
+						if (index.get() >= playerCount) {
+							
+							throw new Exception("Too many connection attempts! ");
+						}
 						
-						this.transaction += i + " ";
+						ChannelPipeline pipeline = Channels.pipeline();
+						
+						pipeline.addLast("ObjectEncoder", new ObjectEncoder());
+						pipeline.addLast("ObjectDecoder", new ObjectDecoder(ClassResolvers.weakCachingConcurrentResolver(ClassLoader.getSystemClassLoader())));
+						
+						pipeline.addLast("HostHandler", new HostHandler(
+								index.getAndIncrement(), 
+								channelGroup, 
+								new InputReceivedHandler() {
+									
+									@Override
+									public void inputReceived(int index, String sourceAddress, Set<String> targetAddresses) throws Exception {
+										
+										synchronized (LOCK) {
+											
+											Preconditions.checkArgument(index >= 0, "Unexpected index (" + index + ")");
+											Preconditions.checkArgument(index < playerCount, "Unexpected index (" + index + ")");
+											
+											Preconditions.checkArgument(!Host.this.sourceAddresses.containsKey(index));
+											Preconditions.checkArgument(!Host.this.targetAddresses.containsKey(index));
+											
+											Host.this.sourceAddresses.put(index, sourceAddress);
+											Host.this.targetAddresses.put(index, targetAddresses);
+											
+											Preconditions.checkState(MixerUtils.isUniform(Host.this.targetAddresses.values()), "Players do not agree on the target addresses. ");
+											
+											if (sourceAddresses.size() == playerCount) {
+												
+												constructAndBroadcastTransaction();
+											}
+										}
+									}
+								}, 
+								new SignatureReceivedHandler() {
+									
+									@Override
+									public void signatureReceived(int index, String signature) {
+										
+										synchronized (LOCK) {
+											
+											Preconditions.checkArgument(index >= 0, "Unexpected index (" + index + ")");
+											Preconditions.checkArgument(index < playerCount, "Unexpected index (" + index + ")");;
+											
+											Preconditions.checkArgument(!signatures.containsKey(index), "A signature has already been received from this player. ");
+											
+											signatures.put(index, signature);
+											
+											if (signatures.size() == playerCount) {
+												
+												finishAndOutputTransaction();
+											}
+										}
+									}
+								}));
+						
+						return pipeline;
 					}
-					
-					System.out.println("Got transaction: " + this.transaction);
-					
-					this.channelGroup.write(this.transaction);
-				}
-			}
-		}
+				});
+		
+		this.startUpLock = new AtomicBoolean(false);
 	}
 	
-	private void addOldAddress(String oldAddress) throws Exception {
+	@Override
+	protected void startUp() throws Exception {
 		
-		if (this.oldAddresses.contains(oldAddress)) {
-			
-			throw new Exception("Already have old address! ");
-		}
+		Preconditions.checkState(!this.startUpLock.getAndSet(true), "This host has already been used. ");
 		
-		if (this.oldAddresses.size() == this.numberOfPlayers) {
-			
-			throw new Exception("Old address list is already at capacity! ");
-		}
-		
-		this.oldAddresses.add(oldAddress);
+		this.serverChannel = this.bootstrap.bind(
+				new InetSocketAddress(
+						InetAddress.getLocalHost(), 
+						this.port));
 	}
 	
-	private void addFreshAddresses(Set<String> freshAddresses) throws Exception {
+	@Override
+	protected void shutDown() throws Exception {
 		
-		synchronized (LOCK) {
+		System.out.println("Shutting down... ");
+		
+		this.serverChannel.close().awaitUninterruptibly();
+		
+		this.bossExecutor.shutdown();
+		this.workerExecutor.shutdown();
+		
+		this.bootstrap.releaseExternalResources();
+	}
+	
+	private void constructAndBroadcastTransaction() {
+		
+		System.out.println("Constructing the transaction... ");
+		
+		Preconditions.checkState(this.transaction == null, "We have already got a transaction! ");
+		
+		Preconditions.checkState(!this.targetAddresses.isEmpty(), "There are no target addresses. ");
+		Preconditions.checkState(MixerUtils.isUniform(this.targetAddresses.values()), "Players do not agree on the target addresses. ");
+		
+		final String nl = System.getProperty("line.separator");
+		final String tb = "\t";
+		
+		this.transaction = "INPUTS {" + nl;
+		
+		for (Entry<Integer, String> i : this.sourceAddresses.entrySet()) {
 			
-			if (this.freshAddresses.isEmpty()) {
-				
-				if (freshAddresses.size() == this.numberOfPlayers) {
-					
-					this.freshAddresses.addAll(freshAddresses);
-				}
-				else {
-					
-					throw new Exception("Incorrect number of fresh addresses! ");
-				}
-			}
-			else {
-				
-				if (!this.freshAddresses.equals(freshAddresses)) {
-					
-					throw new Exception("Fresh address mismatch! ");
-				}
-			}
+			this.transaction += tb + i.getValue() + nl;
 		}
+		
+		this.transaction += "}" + nl;
+		
+		this.transaction += "OUTPUTS {" + nl;
+		
+		for (String i : this.targetAddresses.get(0)) {
+			
+			this.transaction += tb + i + nl;
+		}
+		
+		this.transaction += "}" + nl;
+		
+		System.out.println("Broadcasting the transaction... ");
+		
+		this.channelGroup.write(new MessageTransaction(this.transaction));
+	}
+	
+	private void finishAndOutputTransaction() {
+		
+		System.out.println("Finishing the transaction... ");
+		
+		Preconditions.checkState(this.transaction != null, "There is no partial transaction to finish. ");
+		
+		final String nl = System.getProperty("line.separator");
+		final String tb = "\t";
+		
+		this.transaction += "SIGNATURES {" + nl;
+		
+		for (String i : this.signatures.values()) {
+			
+			this.transaction += tb + i + nl;
+		}
+		
+		this.transaction += "}" + nl;
+		
+		System.out.println("The finished transaction: ");
+		
+		System.out.println(this.transaction.toString());
+		
+		this.stop();
 	}
 }

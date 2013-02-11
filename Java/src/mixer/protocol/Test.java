@@ -2,7 +2,6 @@ package mixer.protocol;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.SocketAddress;
 import java.net.UnknownHostException;
 import java.util.HashSet;
 import java.util.Set;
@@ -16,24 +15,30 @@ public strictfp final class Test {
 	
 	public static void main(String[] args) throws UnknownHostException {
 		
-		Host host = new Host(3);
+		final int port = 1234;
 		
-		host.start(1234);
+		Host host = new Host(port, 3);
 		
-		SocketAddress hostAddress = new InetSocketAddress(InetAddress.getLocalHost(), 1234);
+		host.startAndWait();
 		
-		Set<String> freshAddresses = new HashSet<String>(3);
+		InetSocketAddress hostAddress = new InetSocketAddress(InetAddress.getLocalHost(), port);
 		
-		freshAddresses.add("BOB_FRESH");
-		freshAddresses.add("ALICE_FRESH");
-		freshAddresses.add("CHARLES_FRESH");
+		final Set<String> targetAddresses = new HashSet<String>();
 		
-		Client clientA = new Client("ALICE_OLD", freshAddresses);
-		Client clientB = new Client("BOB_OLD", freshAddresses);
-		Client clientC = new Client("CHARLES_OLD", freshAddresses);
+		targetAddresses.add("ALICE_TARGET");
+		targetAddresses.add("BOB_TARGET");
+		targetAddresses.add("CHARLIE_TARGET");
 		
-		clientA.start(hostAddress);
-		clientB.start(hostAddress);
-		clientC.start(hostAddress);
+		Client clientA = new Client("ALICE_SOURCE", targetAddresses, hostAddress);
+		
+		clientA.start();
+		
+		Client clientB = new Client("BOB_SOURCE", targetAddresses, hostAddress);
+		
+		clientB.start();
+		
+		Client clientC = new Client("CHARLIE_SOURCE", targetAddresses, hostAddress);
+		
+		clientC.start();
 	}
 }

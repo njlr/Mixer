@@ -1,4 +1,5 @@
 package mixer.tools;
+
 import com.google.bitcoin.core.Address;
 import com.google.bitcoin.core.ECKey;
 import com.google.bitcoin.core.NetworkParameters;

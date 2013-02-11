@@ -3,9 +3,7 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="lib" path="lib/guava-13.0.1.jar"/>
 	<classpathentry kind="lib" path="lib/netty-3.5.10.Final.jar"/>
-	<classpathentry kind="lib" path="lib/bitcoinj-0.7-SNAPSHOT.jar"/>
-	<classpathentry kind="lib" path="lib/bitcoinj-tools-0.7-SNAPSHOT.jar"/>
-	<classpathentry kind="lib" path="lib/original-bitcoinj-tools-0.7-SNAPSHOT.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/bitcoinj"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
