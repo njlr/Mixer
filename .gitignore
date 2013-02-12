@@ -4,6 +4,8 @@
 *.wallet
 *.wallet.*
 
+*.jar
+
 *.py[cod]
 
 # C extensions
