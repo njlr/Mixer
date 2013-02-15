@@ -1,31 +1,56 @@
 package mixer.protocol;
 
+import java.math.BigInteger;
 import java.net.InetSocketAddress;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import mixer.MixerUtils;
+import mixer.protocol.messages.MessagePartialTransaction;
+import mixer.protocol.messages.MessagePlayerInput;
+import mixer.protocol.messages.MessageSignature;
+import mixer.protocol.messages.MessageTransaction;
+
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.channel.Channel;
+import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;
+import org.jboss.netty.channel.ChannelStateEvent;
 import org.jboss.netty.channel.Channels;
+import org.jboss.netty.channel.ExceptionEvent;
+import org.jboss.netty.channel.MessageEvent;
+import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.jboss.netty.handler.codec.serialization.ClassResolvers;
 import org.jboss.netty.handler.codec.serialization.ObjectDecoder;
 import org.jboss.netty.handler.codec.serialization.ObjectEncoder;
 
+import com.google.bitcoin.core.Address;
+import com.google.bitcoin.core.ScriptException;
+import com.google.bitcoin.core.Transaction;
+import com.google.bitcoin.core.TransactionOutput;
+import com.google.bitcoin.core.Wallet;
+import com.google.bitcoin.core.Transaction.SigHash;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.util.concurrent.AbstractExecutionThreadService;
 
 public strictfp final class Client extends AbstractExecutionThreadService {
 	
-	private final String sourceAddress; 
-	private final Set<String> targetAddresses;
+	private static final Object LOCK = new Object();
+	
+	private final Wallet wallet;
+	
+	private final Set<Address> targetAddresses;
+	private final BigInteger amount;
 	
 	private final InetSocketAddress hostAddress;
+	
+	private final TransactionOutput source;
 	
 	private final ExecutorService bossExecutor;
 	private final ExecutorService workerExecutor;
@@ -39,14 +64,22 @@ public strictfp final class Client extends AbstractExecutionThreadService {
 	private final AtomicBoolean keepRunning;
 	private final Object lock;
 	
-	public Client(final String sourceAddress, final Set<String> targetAddresses, final InetSocketAddress hostAddress) {
+	public Client(final Wallet wallet, final Set<Address> targetAddresses, final BigInteger amount, final InetSocketAddress hostAddress) {
 		
 		super();
 		
-		this.sourceAddress = sourceAddress;
+		Preconditions.checkArgument(wallet != null);
+		Preconditions.checkArgument(targetAddresses != null);
+		Preconditions.checkArgument(Preconditions.checkNotNull(amount).compareTo(BigInteger.ZERO) > 0);
+		
+		this.wallet = wallet;
+		
 		this.targetAddresses = ImmutableSet.copyOf(targetAddresses);
+		this.amount = amount;
 		
 		this.hostAddress = hostAddress;
+		
+		this.source = Preconditions.checkNotNull(MixerUtils.getClosestOutput(this.wallet, this.amount));
 		
 		this.bossExecutor = Executors.newCachedThreadPool();
 		this.workerExecutor = Executors.newCachedThreadPool();
@@ -67,7 +100,7 @@ public strictfp final class Client extends AbstractExecutionThreadService {
 						pipeline.addLast("ObjectEncoder", new ObjectEncoder());
 						pipeline.addLast("ObjectDecoder", new ObjectDecoder(ClassResolvers.weakCachingConcurrentResolver(ClassLoader.getSystemClassLoader())));
 						
-						pipeline.addLast("ClientHandler", new ClientHandler(Client.this.sourceAddress, Client.this.targetAddresses));
+						pipeline.addLast("ClientHandler", new ClientHandler());
 						
 						return pipeline;
 					}
@@ -134,5 +167,144 @@ public strictfp final class Client extends AbstractExecutionThreadService {
 		this.workerExecutor.shutdown();
 		
 		this.bootstrap.releaseExternalResources();
+	}
+	
+	private boolean checkFairness(final Transaction transaction) throws Exception {
+		
+		synchronized (LOCK) {
+			
+			Preconditions.checkArgument(transaction != null);
+			
+			final Set<Address> addresses = new HashSet<Address>(this.targetAddresses);
+			
+			for (final TransactionOutput i : transaction.getOutputs()) {
+				
+				if (!i.getValue().equals(this.amount)) {
+					
+					System.out.println("Outputs must all receive the same amount! ");
+					
+					return false;
+				}
+				
+				if (i.getScriptPubKey().isSentToAddress()) {
+					
+					final Address address = i.getScriptPubKey().getToAddress();
+					
+					if (addresses.contains(address)) {
+						
+						addresses.remove(address);
+					}
+					else {
+						
+						System.out.println("Unexpected output address " + address + "! ");
+						
+						return false;
+					}
+				}
+				else {
+					
+					System.out.println("Payout must be to an address. ");
+					
+					return false;
+				}
+			}
+			
+			if (addresses.isEmpty()) {
+				
+				return true; // TODO: Check inputs?
+			}
+			else {
+				
+				System.out.println("The following are not paid: " + addresses.toString() + "! ");
+				
+				return false;
+			}
+		}
+	}
+	
+	private strictfp final class ClientHandler extends SimpleChannelHandler {
+		
+		private final AtomicBoolean signatureLatch;
+		
+		public ClientHandler() {
+			
+			super();
+			
+			this.signatureLatch = new AtomicBoolean(true);
+		}
+		
+		@Override
+		public void channelConnected(final ChannelHandlerContext ctx, final ChannelStateEvent e) throws Exception {
+			
+			super.channelConnected(ctx, e);
+			
+			System.out.println("Connected to host. ");
+			
+			e.getChannel().write(new MessagePlayerInput(source, targetAddresses));
+			
+			System.out.println("Sent input to host. ");
+		}
+		
+		@Override
+		public void messageReceived(final ChannelHandlerContext ctx, final MessageEvent e) throws Exception {
+			
+			super.messageReceived(ctx, e);
+			
+			if (e.getMessage() instanceof MessagePartialTransaction) {
+				
+				synchronized (LOCK) {
+					
+					System.out.println("Received a partial transaction from the host. ");
+					
+					final MessagePartialTransaction m = (MessagePartialTransaction) e.getMessage();
+					
+					Preconditions.checkState(checkFairness(m.getTransaction()), "The transaction is not fair! ");
+					
+					e.getChannel().write(new MessageSignature(this.getSignature(m.getTransaction(), m.getIndexToSign())));
+				}
+			}
+			else if (e.getMessage() instanceof MessageTransaction) {
+				
+				synchronized (LOCK) {
+					
+					System.out.println("Received the finished transaction. ");
+					
+					final MessageTransaction m = (MessageTransaction) e.getMessage();
+					
+					System.out.println("The finished transaction: ");
+					System.out.println(m.getTransaction().toString());
+					
+					stop();
+				}
+			}
+		}
+		
+		@Override
+		public void exceptionCaught(final ChannelHandlerContext ctx, final ExceptionEvent e) throws Exception {
+			
+			System.err.println("There was an exception! ");
+			System.err.println("Cause: " + e.getCause().getMessage());
+			
+			e.getCause().printStackTrace();
+		}
+		
+		private byte[] getSignature(final Transaction transaction, final int index) {
+			
+			System.out.println("Signing: ");
+			System.out.println(transaction.toString());
+			
+			Preconditions.checkState(
+					this.signatureLatch.getAndSet(false), 
+					"A transaction has already been signed. Signing may only occur once for security reasons. ");
+			
+			try {
+				
+				return transaction.computeScriptBytes(index, SigHash.ALL, wallet);
+			}
+			catch (ScriptException e) {
+				
+				return null;
+			}
+		}
 	}
 }

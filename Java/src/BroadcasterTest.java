@@ -40,7 +40,7 @@ public strictfp final class BroadcasterTest {
 		
 		final PeerGroup peerGroup = new PeerGroup(networkParameters, blockChain);
 		
-		peerGroup.setMinBroadcastConnections(2);
+		peerGroup.setMinBroadcastConnections(3);
 		
 		peerGroup.addWallet(wallet);
 		peerGroup.addPeerDiscovery(new IrcDiscovery("#bitcoinTEST3"));

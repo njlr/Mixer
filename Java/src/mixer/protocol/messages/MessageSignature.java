@@ -6,14 +6,14 @@ public strictfp final class MessageSignature extends Message {
 	
 	private static final long serialVersionUID = -8944727153638179974L;
 	
-	private final String signature;
+	private final byte[] signature;
 	
-	public String getSignature() {
+	public byte[] getSignature() {
 		
 		return this.signature;
 	}
 	
-	public MessageSignature(final String signature) {
+	public MessageSignature(final byte[] signature) {
 		
 		super();
 		

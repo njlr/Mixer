@@ -66,11 +66,16 @@ public strictfp final class SimpleTransactionTest {
 		if (foundInput) {
 			
 			// Sign the tx
-			tx.signInputs(SigHash.ALL, wallet);
+			//tx.signInputs(SigHash.ALL, wallet);
+			
+			for (int i = 0; i < tx.getInputs().size(); i++) {
+				
+				tx.getInput(i).setScriptBytes(tx.computeScriptBytes(i, SigHash.ALL, wallet));
+			}
 			
 			// Commit
-			//wallet.commitTx(tx);
-			//wallet.saveToFile(walletFile);
+			wallet.commitTx(tx);
+			wallet.saveToFile(walletFile);
 			
 			// Show the tx to the user
 			System.out.println(tx);

@@ -1,23 +1,21 @@
 package mixer.protocol.messages;
 
-import com.google.common.base.Preconditions;
+import com.google.bitcoin.core.Transaction;
 
 public strictfp final class MessageTransaction extends Message {
 	
-	private static final long serialVersionUID = 9211193151437744281L;
+	private static final long serialVersionUID = -4082383747055263150L;
 	
-	private final String transaction;
+	private final Transaction transaction;
 	
-	public String getTransaction() {
+	public Transaction getTransaction() {
 		
 		return this.transaction;
 	}
 	
-	public MessageTransaction(final String transaction) {
+	public MessageTransaction(final Transaction transaction) {
 		
 		super();
-		
-		Preconditions.checkArgument(transaction != null);
 		
 		this.transaction = transaction;
 	}
