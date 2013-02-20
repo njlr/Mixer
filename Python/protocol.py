@@ -11,84 +11,89 @@ from viff.util import dprint
 from viff.util import find_prime
 
 
+def pair_sort(a, b, c):
+    
+    x = c * a + (1 - c) * b
+    y = c * b + (1 - c) * a
+    
+    return x, y
+
+
+def split(l, n):
+    
+    return [l[i:i+n] for i in range(0, len(l), n)]
+
 
 class Protocol:
     
-    def __init__(self, id, address, representative):
+    def __init__(self, id, address, representative, out):
     
         self.id = id
-        self.address = long(address)
+        self.address = [ long(x) for x in split(address, 5) ]
         self.representative = int(representative)
-        
-        # self.zp = GF(6632317036373954342534106148257945498945733337629213881042539095631298681510931689271223204739693621723707122102748364754661480466400467365295874626886952738093977819973474777946387419742641483622349146490687098645546027121030341885994312122596586105123490152878626635017562351481045703454576071680271765845737679919400085357619)
-    
-    
-    def pair_sort(self, a, b, c):
-        
-        x = c * a + (1 - c) * b
-        y = c * b + (1 - c) * a
-        
-        return x, y
+        self.out = open(str(out), "w")
     
     
     def done(self, xs): 
-    
-        print "Shuffling complete. "
-        
-        f = open("output.txt", "w")
-        
-        f.write('<?xml version="1.0" encoding="utf-8" standalone="yes"?>\n')
-        f.write("<AddressList>\n")
         
         for x in xs: 
-            
-            f.write("\t<Address>\n")
-            
-            f.write("\t\t" + str(long(x)) + "\n")
-            
-            f.write("\t</Address>\n")
         
-        f.write("</AddressList>")
+            self.out.write(str(long(x)) + " ")
         
-        print "Output written to file. "
+        self.count += 1
         
-        self.runtime.shutdown()
+        if (self.count == self.runtime.num_players):
+            
+            self.runtime.shutdown()
     
     
     def run(self, runtime):
     
-        l = 32
+        l = 104
         k = 64
         
         self.zp = GF(find_prime(2**(l + 1) + 2**(l + k + 1), blum=True))
-        
-        print "Shuffling... "
-    
         self.runtime = runtime
-
-        add_shares = self.runtime.input(range(1, self.runtime.num_players + 1), self.zp, self.address)
-        rep_shares = self.runtime.input(range(1, self.runtime.num_players + 1), self.zp, self.representative)
         
-        n = len(add_shares)
+        p = range(1, runtime.num_players + 1)
         
-        for i in range(0, n): 
-            
-            for j in range(0, i) + range(i + 1, n): 
+        part_add_shares = [ runtime.input(p, self.zp, x) for x in self.address ]
+        rep_shares = runtime.input(p, self.zp, self.representative)
+        
+        n = len(rep_shares)
+        
+        for i in range(0, n - 1):
+           
+            for j in range(0, n - i - 1): 
                 
-                if i != j: 
+                c = rep_shares[j] < rep_shares[j + 1]
+                
+                p, q = pair_sort(rep_shares[j], rep_shares[j + 1], c)
+                
+                rep_shares[j] = p
+                rep_shares[j + 1] = q 
+                
+                for add_shares in part_add_shares: 
                     
-                    c = rep_shares[i] < rep_shares[j]
+                    r, s = pair_sort(add_shares[j], add_shares[j + 1], c)
                     
-                    g, l = self.pair_sort(rep_shares[i], rep_shares[j], c)
-                    
-                    rep_shares[i] = l
-                    rep_shares[j] = g
-                    
-                    p, q = self.pair_sort(add_shares[i], add_shares[j], c)
-                    
-                    add_shares[i] = q
-                    add_shares[j] = p
+                    add_shares[j] = r
+                    add_shares[j + 1] = s
+                
+            
+        self.count = 0
         
-        gather_shares(map(self.runtime.open, add_shares)).addCallback(self.done)
+        for i in range(0, self.runtime.num_players): 
+             
+            self.unpack(part_add_shares, i).addCallback(self.done)
+        
+    
+    
+    def unpack(self, part_add_shares, player): 
+        
+        return gather_shares([ self.runtime.open(part_add_shares[x][player]) for x in range(0, len(self.address)) ])
+        
+
+
 
 

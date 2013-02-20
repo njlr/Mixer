@@ -18,14 +18,14 @@ from protocol import Protocol
 
 def errorHandler(failure):
     
-    print "Error: %s" % failure
+    print "ERROR: %s" % failure
 
 
 parser = OptionParser(usage="usage: %prog config address")
 
 options, args = parser.parse_args()
 
-if len(args) != 2:
+if len(args) != 3:
     
     parser.error("wrong number of arguments")
 
@@ -38,8 +38,9 @@ id, players = load_config(args[0])
 
 address = args[1]
 
+out = args[2]
 
-protocol = Protocol(id, address, getrandbits(32)) # This is NOT random. Replace with SSL after testing. 
+protocol = Protocol(id, address, getrandbits(32), out) # This is NOT random. Replace with SSL after testing. 
 
 
 pre_runtime = create_runtime(id, players, (len(players) - 1)//2, runtime_class=Toft07Runtime)

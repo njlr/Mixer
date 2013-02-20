@@ -1,7 +1,7 @@
 package mixer.protocol;
 
 import java.math.BigInteger;
-import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -48,7 +48,7 @@ public strictfp final class Client extends AbstractExecutionThreadService {
 	private final Set<Address> targetAddresses;
 	private final BigInteger amount;
 	
-	private final InetSocketAddress hostAddress;
+	private final SocketAddress hostAddress;
 	
 	private final TransactionOutput source;
 	
@@ -64,7 +64,7 @@ public strictfp final class Client extends AbstractExecutionThreadService {
 	private final AtomicBoolean keepRunning;
 	private final Object lock;
 	
-	public Client(final Wallet wallet, final Set<Address> targetAddresses, final BigInteger amount, final InetSocketAddress hostAddress) {
+	public Client(final Wallet wallet, final BigInteger amount, final SocketAddress hostAddress, final Set<Address> targetAddresses) {
 		
 		super();
 		

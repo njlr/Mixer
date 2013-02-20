@@ -1,5 +1,7 @@
 package mixer;
 
+import com.google.common.base.Preconditions;
+
 public strictfp final class AddressUtils {
 	
 	private AddressUtils() {
@@ -25,10 +27,7 @@ public strictfp final class AddressUtils {
 		
 		numericString = repeat("0", numericString.length() % 2) + numericString;
 		
-		if (numericString.length() != 102) {
-			
-			throw new IllegalArgumentException("Numeric addresses must be 102 characters long! ");
-		}
+		Preconditions.checkArgument(numericString.length() == 102, "Numeric addresses must be 102 characters long! " + numericString);
 		
 		String result = "";
 		
@@ -40,7 +39,7 @@ public strictfp final class AddressUtils {
 		return result;
 	}
 	
-	public static String leftPad(String s, String p, int n) {
+	public static String leftPad(final String s, final String p, final int n) {
 		
 		String r = s;
 		
@@ -52,7 +51,7 @@ public strictfp final class AddressUtils {
 		return r;
 	}
 	
-	public static String[] splitString(String s, int n) {
+	public static String[] splitString(final String s, final int n) {
 		
 		if (s.length() % n != 0) {
 			
@@ -71,7 +70,7 @@ public strictfp final class AddressUtils {
 		return r;
 	}
 	
-	public static String repeat(String s, int n) {
+	public static String repeat(final String s, final int n) {
 		
 		String result = "";
 		

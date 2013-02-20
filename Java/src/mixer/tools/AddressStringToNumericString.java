@@ -9,21 +9,22 @@ public strictfp final class AddressStringToNumericString {
 		super();
 	}
 	
-	public static void main(String[] args) {
+	public static void main(final String[] args) {
 		
-		if (args.length == 1) {
-			
-			String addressString = args[0];
-			
-			String numericString = AddressUtils.addressStringToNumericString(addressString);
-			
-			System.out.println(numericString);
-		}
-		else {
+		if (args.length == 0) {
 			
 			System.out.println("Tool for converting BTC addresses into numeric form");
 			System.out.println("Usage: ");
-			System.out.println("0 - Address String");
+			System.out.println("Address String + ");
+			
+			return;
 		}
+		
+		for (final String i : args) {
+			
+			System.out.print(AddressUtils.addressStringToNumericString(i) + " ");
+		}
+		
+		System.out.println();
 	}
 }

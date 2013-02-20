@@ -10,6 +10,7 @@ import com.google.bitcoin.core.Utils;
 import com.google.bitcoin.core.Wallet;
 import com.google.bitcoin.core.WalletTransaction;
 import com.google.bitcoin.core.WalletTransaction.Pool;
+import com.google.common.base.Preconditions;
 
 public strictfp final class SimpleTransactionTest {
 	
@@ -25,6 +26,8 @@ public strictfp final class SimpleTransactionTest {
 		
 		final Wallet wallet = Wallet.loadFromFile(walletFile);
 		
+		Preconditions.checkState(!wallet.keychain.isEmpty());
+		
 		// Store its network type
 		final NetworkParameters networkParameters = wallet.getNetworkParameters();
 		
@@ -32,7 +35,9 @@ public strictfp final class SimpleTransactionTest {
 		final Transaction tx = new Transaction(networkParameters);
 		
 		// Create a recipient
-		final ECKey recipient = new ECKey(new BigInteger("10001110101")); // Just a test so deterministic key selection is fine. 
+		final ECKey recipient = new ECKey(new BigInteger("1234567")); // Just a test so deterministic key selection is fine. 
+		
+		final BigInteger amount = Utils.toNanoCoins(0, 10);
 		
 		// Look for an unspent output... 
 		boolean foundInput = false;
@@ -43,11 +48,16 @@ public strictfp final class SimpleTransactionTest {
 				
 				for (TransactionOutput j : i.getTransaction().getOutputs()) {
 					
-					if (j.isMine(wallet) && j.isAvailableForSpending() && j.getValue().compareTo(BigInteger.ZERO) > 0 && j.getValue().compareTo(Utils.toNanoCoins(10, 0)) < 0) {
+					if (j.isMine(wallet) && j.isAvailableForSpending() && j.getValue().compareTo(amount) >= 0) {
 						
-						// Send all of it to the recipient
+						// Use as input
 						tx.addInput(j);
-						tx.addOutput(j.getValue(), recipient.toAddress(networkParameters));
+						
+						// Send amount it to the recipient
+						tx.addOutput(amount, recipient.toAddress(networkParameters));
+						
+						// Take our change
+						tx.addOutput(j.getValue().subtract(amount), wallet.keychain.get(0).toAddress(networkParameters));
 						
 						// Stop looking
 						foundInput = true;
@@ -74,8 +84,8 @@ public strictfp final class SimpleTransactionTest {
 			}
 			
 			// Commit
-			wallet.commitTx(tx);
-			wallet.saveToFile(walletFile);
+			//wallet.commitTx(tx);
+			//wallet.saveToFile(walletFile);
 			
 			// Show the tx to the user
 			System.out.println(tx);

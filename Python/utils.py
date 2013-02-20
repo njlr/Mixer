@@ -1,7 +1,5 @@
 import random
 
-
-
 def next_power(n, p): 
     
     looking = True
