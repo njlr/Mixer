@@ -4,8 +4,9 @@ import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -31,7 +32,6 @@ import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import org.jboss.netty.handler.codec.serialization.ClassResolvers;
 import org.jboss.netty.handler.codec.serialization.ObjectDecoder;
 import org.jboss.netty.handler.codec.serialization.ObjectEncoder;
-import org.jboss.netty.util.internal.ConcurrentHashMap;
 
 import com.google.bitcoin.core.Address;
 import com.google.bitcoin.core.NetworkParameters;
@@ -52,12 +52,12 @@ public strictfp final class Host extends AbstractIdleService {
 	
 	private final AtomicInteger index;
 	
-	private final Map<Integer, TransactionOutput> sourceAddresses;
-	private final Map<Integer, Set<Address>> targetAddresses;
+	private final SortedMap<Integer, TransactionOutput> sourceAddresses;
+	private final SortedMap<Integer, Set<Address>> targetAddresses;
 	
 	private final Set<HostHandler> hostHandlers;
 	
-	private final Map<Integer, byte[]> signatures;
+	private final SortedMap<Integer, byte[]> signatures;
 	
 	private final ExecutorService bossExecutor;
 	private final ExecutorService workerExecutor;
@@ -82,10 +82,10 @@ public strictfp final class Host extends AbstractIdleService {
 		
 		this.index = new AtomicInteger(0);
 		
-		this.sourceAddresses = new ConcurrentHashMap<Integer, TransactionOutput>(this.playerCount);
-		this.targetAddresses = new ConcurrentHashMap<Integer, Set<Address>>(this.playerCount);
+		this.sourceAddresses = new ConcurrentSkipListMap<Integer, TransactionOutput>();
+		this.targetAddresses = new ConcurrentSkipListMap<Integer, Set<Address>>();
 		
-		this.signatures = new ConcurrentHashMap<Integer, byte[]>(this.playerCount);
+		this.signatures = new ConcurrentSkipListMap<Integer, byte[]>();
 		
 		this.transaction = null;
 		
@@ -217,6 +217,9 @@ public strictfp final class Host extends AbstractIdleService {
 			
 			super();
 			
+			Preconditions.checkArgument(index >= 0, "Unexpected index (" + index + ")");
+			Preconditions.checkArgument(index < playerCount, "Unexpected index (" + index + ")");
+			
 			this.index = index;
 			
 			this.inputLock = new AtomicBoolean(true);
@@ -255,14 +258,11 @@ public strictfp final class Host extends AbstractIdleService {
 					
 					MessagePlayerInput m = (MessagePlayerInput) e.getMessage();
 					
-					Preconditions.checkArgument(index >= 0, "Unexpected index (" + index + ")");
-					Preconditions.checkArgument(index < playerCount, "Unexpected index (" + index + ")");
-					
 					Preconditions.checkArgument(!sourceAddresses.containsKey(index));
 					Preconditions.checkArgument(!targetAddresses.containsKey(index));
 					
-					sourceAddresses.put(index, m.getSource());
-					targetAddresses.put(index, m.getTargetAddresses());
+					sourceAddresses.put(this.index, m.getSource());
+					targetAddresses.put(this.index, m.getTargetAddresses());
 					
 					Preconditions.checkState(MixerUtils.isUniform(Host.this.targetAddresses.values()), "Players do not agree on the target addresses. ");
 					

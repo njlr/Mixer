@@ -290,7 +290,7 @@ public strictfp final class Client extends AbstractExecutionThreadService {
 		
 		private byte[] getSignature(final Transaction transaction, final int index) {
 			
-			System.out.println("Signing: ");
+			System.out.println("Signing index " + index + " of: ");
 			System.out.println(transaction.toString());
 			
 			Preconditions.checkState(
@@ -301,7 +301,7 @@ public strictfp final class Client extends AbstractExecutionThreadService {
 				
 				return transaction.computeScriptBytes(index, SigHash.ALL, wallet);
 			}
-			catch (ScriptException e) {
+			catch (final ScriptException e) {
 				
 				return null;
 			}

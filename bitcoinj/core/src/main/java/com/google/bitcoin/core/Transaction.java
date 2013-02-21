@@ -762,6 +762,9 @@ public class Transaction extends ChildMessage implements Serializable {
     
     public synchronized byte[] computeScriptBytes(final int inputIndex, final SigHash hashType, final Wallet wallet) throws ScriptException {
     	
+    	Preconditions.checkArgument(inputIndex >= 0);
+    	Preconditions.checkArgument(inputIndex < inputs.size());
+    	
         Preconditions.checkState(inputs.size() > 0);
         Preconditions.checkState(outputs.size() > 0);
         
