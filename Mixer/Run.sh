@@ -19,14 +19,12 @@ peers=${*:$start:($count+1)}
 
 # Generate an address, save it to the wallet
 address=$(./GenerateAddress.sh $wallet)
-numeric=$(./AddressStringToNumericString.sh $address)
-
-# Generate the VIFF config files
-./GenerateConfig.sh $peers
-
-config="player-"$player".ini"
 
 # Perform the shuffle
+config="player-"$player".ini"
+
+numeric=$(./AddressStringToNumericString.sh $address)
+
 shuffle="targets-"$player".txt"
 
 ./Shuffle.sh $config $numeric $shuffle
@@ -37,5 +35,4 @@ numerictargets=$(<$shuffle)
 targets=$(./NumericStringToAddressString.sh $numerictargets)
 
 # Run the client
-echo $wallet $amount $hostname $hostport $targets
-#./LaunchClient.sh $wallet $amount $hostname $hostport $targets
+./LaunchClient.sh $wallet $amount $hostname $hostport $targets

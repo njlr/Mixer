@@ -1,1 +1,1 @@
-python main.py $*
+python main.py $1 $2 $3

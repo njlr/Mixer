@@ -20,6 +20,11 @@ def pair_sort(a, b, c):
     return x, y
 
 
+def split(l, n):
+    
+    return [ l[i:i+n] for i in range(0, len(l), n) ]
+
+
 class Protocol:
     
     def __init__(self, id, address, representative, out):
@@ -27,20 +32,29 @@ class Protocol:
         print "Got input: " + str(address)
         
         self.id = id
-        self.address = long(address)
+        self.address = [ long(x) for x in split(address, 256) ]
+        self.parts_count = len(self.address)
         self.representative = long(representative)
         self.out = open(str(out), "w")
+        
+        print "Split into " + str(self.parts_count) + " parts. "
     
     
     def done(self, xs): 
         
         for x in xs: 
         
-            self.out.write(str(long(x)) + " ")
+            self.out.write(str(x))
         
-        print "Shutting down... "
+        self.out.write(" ")
         
-        self.runtime.shutdown()
+        self.count += 1
+        
+        if (self.count == self.runtime.num_players):
+            
+            print "Shutting down... "
+            
+            self.runtime.shutdown()
     
     
     def run(self, runtime):
@@ -57,7 +71,7 @@ class Protocol:
         
         print "Sharing values... "
         
-        add_shares = runtime.input(p, self.zp, self.address)
+        part_add_shares = [ runtime.input(p, self.zp, x) for x in self.address ]
         rep_shares = runtime.input(p, self.zp, self.representative)
         
         n = len(rep_shares)
@@ -73,11 +87,28 @@ class Protocol:
                 rep_shares[j] = p
                 rep_shares[j + 1] = q 
                 
-                r, s = pair_sort(add_shares[j], add_shares[j + 1], c)
+                for add_shares in part_add_shares: 
                     
-                add_shares[j] = r
-                add_shares[j + 1] = s
+                    r, s = pair_sort(add_shares[j], add_shares[j + 1], c)
+                    
+                    add_shares[j] = r
+                    add_shares[j + 1] = s
                 
+            
+        self.count = 0
         
-        gather_shares([ self.runtime.open(x) for x in add_shares ]).addCallback(self.done)
+        for i in range(0, self.runtime.num_players): 
+            
+            print "Unpacking the " + str(i) + "th input... "
+            
+            self.unpack(part_add_shares, i).addCallback(lambda x : self.done("".join([ str(long(y)) for y in x ])))
         
+    
+    
+    def unpack(self, part_add_shares, player): 
+        
+        return gather_shares([ self.runtime.open(part_add_shares[x][player]) for x in range(0, self.parts_count) ])
+
+
+
+

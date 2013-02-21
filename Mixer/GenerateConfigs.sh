@@ -6,5 +6,6 @@ then
 else
     
     python generate-config-files.py $*
-
+    
+    wait
 fi
