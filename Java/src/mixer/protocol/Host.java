@@ -39,7 +39,7 @@ import com.google.bitcoin.core.Transaction;
 import com.google.bitcoin.core.TransactionOutput;
 import com.google.common.base.Preconditions;
 import com.google.common.util.concurrent.AbstractIdleService;
-
+//TODO: Proper shutdown
 public strictfp final class Host extends AbstractIdleService {
 	
 	private static final Object LOCK = new Object();

@@ -1,5 +1,7 @@
 package mixer.protocol;
 
+import java.io.File;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.net.SocketAddress;
 import java.util.HashSet;
@@ -43,6 +45,7 @@ public strictfp final class Client extends AbstractExecutionThreadService {
 	
 	private static final Object LOCK = new Object();
 	
+	private final File walletFile;
 	private final Wallet wallet;
 	
 	private final Set<Address> targetAddresses;
@@ -64,15 +67,17 @@ public strictfp final class Client extends AbstractExecutionThreadService {
 	private final AtomicBoolean keepRunning;
 	private final Object lock;
 	
-	public Client(final Wallet wallet, final BigInteger amount, final SocketAddress hostAddress, final Set<Address> targetAddresses) {
+	public Client(final File walletFile, final BigInteger amount, final SocketAddress hostAddress, final Set<Address> targetAddresses) throws IOException {
 		
 		super();
 		
-		Preconditions.checkArgument(wallet != null);
+		Preconditions.checkArgument(walletFile != null);
 		Preconditions.checkArgument(targetAddresses != null);
 		Preconditions.checkArgument(Preconditions.checkNotNull(amount).compareTo(BigInteger.ZERO) > 0);
 		
-		this.wallet = wallet;
+		this.walletFile = walletFile;
+		
+		this.wallet = Wallet.loadFromFile(this.walletFile);
 		
 		this.targetAddresses = ImmutableSet.copyOf(targetAddresses);
 		this.amount = amount;
@@ -273,6 +278,9 @@ public strictfp final class Client extends AbstractExecutionThreadService {
 					
 					System.out.println("The finished transaction: ");
 					System.out.println(m.getTransaction().toString());
+					
+					wallet.commitTx(m.getTransaction());
+					wallet.saveToFile(walletFile);
 					
 					stop();
 				}

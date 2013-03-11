@@ -9,13 +9,12 @@ import java.net.SocketAddress;
 import java.util.HashSet;
 import java.util.Set;
 
+import mixer.protocol.Client;
+
 import com.google.bitcoin.core.Address;
 import com.google.bitcoin.core.AddressFormatException;
 import com.google.bitcoin.core.Utils;
-import com.google.bitcoin.core.Wallet;
 import com.google.bitcoin.core.WrongNetworkException;
-
-import mixer.protocol.Client;
 
 public strictfp final class ClientLauncher {
 	
@@ -41,8 +40,6 @@ public strictfp final class ClientLauncher {
 		
 		final File walletFile = new File(args[0]);
 		
-		final Wallet wallet = Wallet.loadFromFile(walletFile);
-		
 		final BigInteger amount = Utils.toNanoCoins(args[1]);
 		
 		final String hostName = args[2];
@@ -57,7 +54,7 @@ public strictfp final class ClientLauncher {
 			targetAddresses.add(new Address(Address.getParametersFromAddress(args[i]), args[i]));
 		}
 		
-		final Client client = new Client(wallet, amount, hostAddress, targetAddresses);
+		final Client client = new Client(walletFile, amount, hostAddress, targetAddresses);
 		
 		client.startAndWait();
 	}
