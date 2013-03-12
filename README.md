@@ -1,7 +1,7 @@
 A Bitcoin Mixing Service Using Secure Multi-party Computation
 =
 
-Nick La Rooy
+Nick La Rooy, 
 Julian Bradfield (Supervisor)
 
 Structure
