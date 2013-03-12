@@ -5,7 +5,7 @@ then
 
 else
     
-    python generate-config-files.py $*
+    python generate-config-files.py -n $# $*
     
     wait
 fi

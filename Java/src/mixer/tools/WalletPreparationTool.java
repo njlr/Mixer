@@ -11,7 +11,7 @@ import com.google.bitcoin.core.PeerGroup;
 import com.google.bitcoin.core.Transaction;
 import com.google.bitcoin.core.Utils;
 import com.google.bitcoin.core.Wallet;
-import com.google.bitcoin.core.Wallet.SendRequest;
+import com.google.bitcoin.core.Wallet.SendResult;
 import com.google.bitcoin.discovery.DnsDiscovery;
 import com.google.bitcoin.discovery.IrcDiscovery;
 import com.google.bitcoin.store.BlockStore;
@@ -24,7 +24,7 @@ public strictfp final class WalletPreparationTool {
 		super();
 	}
 	
-	public static void main(String[] args) throws Exception {
+	public static void main(final String[] args) throws Exception {
 		
 		if (args.length != 3) {
 			
@@ -32,7 +32,7 @@ public strictfp final class WalletPreparationTool {
 			System.out.println("Usage: ");
 			System.out.println("0 - Path to the wallet file");
 			System.out.println("1 - Path to the blockchain");
-			System.out.println("2 - Amount to be mixed, in BTC cents");
+			System.out.println("2 - Amount of BTC to be mixed");
 			
 			return;
 		}
@@ -41,7 +41,7 @@ public strictfp final class WalletPreparationTool {
 		final File walletFile = new File(args[0]);
 		final File blockchainFile = new File(args[1]);
 		
-		final BigInteger amount = Utils.toNanoCoins(0, Integer.parseInt(args[2]));
+		final BigInteger amount = Utils.toNanoCoins(args[2]);
 		
 		System.out.println("Preparing " + walletFile.toString() + " for a " + amount.toString() + " nanocoin mix. ");
 		System.out.println();
@@ -56,8 +56,8 @@ public strictfp final class WalletPreparationTool {
 		System.out.println("Wallet loaded. ");
 		System.out.println();
 		
-		// Load the blockchain
-		System.out.println("Loading the blockchain... ");
+		// Load the block-chain
+		System.out.println("Loading the block-chain... ");
 		
 		final BlockStore blockStore = new BoundedOverheadBlockStore(wallet.getNetworkParameters(), blockchainFile);
 		final BlockChain blockChain = new BlockChain(wallet.getNetworkParameters(), wallet, blockStore);
@@ -71,7 +71,6 @@ public strictfp final class WalletPreparationTool {
 		final PeerGroup peerGroup = new PeerGroup(wallet.getNetworkParameters(), blockChain);
 		
 		peerGroup.setUserAgent("WalletPreparationTool", "1.0");
-		// peerGroup.addWallet(wallet);
         
         if (wallet.getNetworkParameters().equals(NetworkParameters.prodNet())) {
             
@@ -85,6 +84,11 @@ public strictfp final class WalletPreparationTool {
         	
             throw new RuntimeException("Unreachable.");
         }
+        
+        peerGroup.addWallet(wallet);
+        peerGroup.setMinBroadcastConnections(1);
+        
+		peerGroup.startAndWait();
 		
 		System.out.println("Peer ready. ");
 		System.out.println();
@@ -105,40 +109,15 @@ public strictfp final class WalletPreparationTool {
 		System.out.println();
 		
 		// Create the transaction
-		System.out.println("Creating the transaction... ");
+		System.out.println("Sending the coins... ");
 		
-		final Transaction tx = new Transaction(wallet.getNetworkParameters());
+		final SendResult sendResult = wallet.sendCoins(peerGroup, key.toAddress(wallet.getNetworkParameters()), amount);
 		
-		tx.addOutput(amount, key);
+		final Transaction tx = sendResult.broadcastComplete.get();
 		
-		final SendRequest sendRequest = Wallet.SendRequest.forTx(tx);
-		
-		if (wallet.completeTx(sendRequest)) {
-			
-			System.out.println("Transaction ready. ");
-			
-			System.out.println("The transaction: ");
-			System.out.println(sendRequest.tx.toString());
-			System.out.println();
-			
-			// Broadcasting
-			System.out.println("Broadcasting... ");
-			
-	        peerGroup.addWallet(wallet);
-	        peerGroup.setMinBroadcastConnections(1);
-	        
-			peerGroup.startAndWait();
-			
-			peerGroup.broadcastTransaction(sendRequest.tx).get();
-			
-			System.out.println("Broadcasting complete. ");
-			System.out.println();
-		}
-		else {
-			
-			System.out.println("Not enough coins! ");
-			System.out.println();
-		}
+		System.out.println("The transaction: ");
+		System.out.println(tx.toString());
+		System.out.println();
 		
 		// Pack up
 		System.out.println("Packing up... ");

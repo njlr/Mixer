@@ -9,6 +9,7 @@ public strictfp final class Launcher {
 	
 	public static void main(final String[] args) {
 		
-		System.out.println("TODO: Help");
+		System.out.println("Bitcoin Mixing Service");
+		System.out.println("See attached documentation for usage. ");
 	}
 }

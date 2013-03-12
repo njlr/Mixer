@@ -12,10 +12,13 @@ wallet=$3
 hostname=$4
 hostport=$5
 
-start=6
-count=$(($#-$start))
+#start=6
+#count=$(($#-$start))
 
-peers=${*:$start:($count+1)}
+#peers=${*:$start:($count+1)}
+
+# Generate configs
+#./GenerateConfigs.sh $peers
 
 # Generate an address, save it to the wallet
 address=$(./GenerateAddress.sh $wallet)
