@@ -21,6 +21,8 @@ report.pdf documents the design and development of the project. This is probably
 Running a Mix
 -
 
+Generate the VIFF configs using /Mixer/GenerateConfigs.sh
+
 Run one instance of /Mixer/LaunchHost.sh. 
 
 Run an instance of /Mixer/Run.sh for each participant. 
