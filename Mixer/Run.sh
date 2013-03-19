@@ -3,7 +3,7 @@
 #wallet
 #java host
 #java port
-#host:port pairs
+#//host:port pairs
 
 # Get parameters
 amount=$1
