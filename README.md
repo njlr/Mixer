@@ -20,15 +20,15 @@ Structure
 Running a Mix
 -
 
-Generate the VIFF configs using /Mixer/GenerateConfigs.sh. This takes a list of host-port pairs. 
+Generate the VIFF configs using */Mixer/GenerateConfigs.sh*. This takes a list of host-port pairs. 
 
-e.g.
+For a three party mix on localhost, use: 
 
 ```./GenerateConfigs.sh localhost:3333 localhost:4444 localhost:5555```
 
 This must be done once for each arrangement of players. Each player *i* requires the *player-i.ini* file. 
 
-Run one instance of /Mixer/LaunchHost.sh. This takes: 
+Run one instance of */Mixer/LaunchHost.sh*. This takes: 
 
     0 - Network Parameters <PROD|TEST>
     1 - Amount of BTC
@@ -39,7 +39,7 @@ For a three party mix of 1 Bitcoin on TestNet, use:
 
 ```./LaunchHost.sh TEST 1 1234 3```
 
-Run an instance of /Mixer/Run.sh for each participant. 
+Run an instance of */Mixer/Run.sh* for each participant. 
 
 For a three party mix of 1 Bitcoin on TestNet, with the host running on *HAL9000*, use: 
 
