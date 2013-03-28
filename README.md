@@ -49,3 +49,8 @@ For a three party mix of 1 Bitcoin on TestNet, with the host running on *HAL9000
 
 ```./Run.sh 3 1 test3.wallet HAL9000 1234```
 
+License
+-
+
+I would like to release this under the most permissive license possible, but there are some complications involving University of Edinburgh guidelines. I will update this once I find out more. 
+
