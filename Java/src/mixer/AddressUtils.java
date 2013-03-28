@@ -76,6 +76,7 @@ public strictfp final class AddressUtils {
 		
 		for (int i = 0; i < n; i++) {
 			
+			// Hardly efficient, but this is not a bottle-neck
 			result += s;
 		}
 		

@@ -3,6 +3,10 @@
 *~
 *.wallet
 *.wallet.*
+.project
+.classpath
+.metadata
+.settings
 
 *.jar
 

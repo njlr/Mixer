@@ -8,7 +8,7 @@ from viff.util import rand, find_prime
 
 from optparse import OptionParser
 
-from random import getrandbits
+import random
 
 from twisted.internet import reactor
 
@@ -21,27 +21,26 @@ def errorHandler(failure):
     print "ERROR: %s" % failure
 
 
-parser = OptionParser(usage="usage: %prog config address out")
+parser = OptionParser(usage="usage: %prog config address")
 
 options, args = parser.parse_args()
 
 if len(args) != 3:
     
-    parser.error("Wrong number of arguments! ")
-
+    parser.error("Wrong number of arguments. Use config, target address, output file")
 
 parser = OptionParser()
 
 options, args = parser.parse_args()
 
 
-id, players = load_config(str(args[0]))
+id, players = load_config(args[0])
 
-address = long(str(args[1]))
+address = args[1]
 
-out = str(args[2])
+out = args[2]
 
-protocol = Protocol(id, address, getrandbits(32), out) # This is NOT true random. Replace with SSL method after testing. 
+protocol = Protocol(id, address, random.SystemRandom().getrandbits(32), out)
 
 
 pre_runtime = create_runtime(id, players, (len(players) - 1)//2, runtime_class=Toft07Runtime)

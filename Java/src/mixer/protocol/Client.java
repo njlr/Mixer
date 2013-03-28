@@ -125,6 +125,7 @@ public strictfp final class Client extends AbstractExecutionThreadService {
 		
 		Preconditions.checkState(!this.startUpLock.getAndSet(true), "This client has already been used. ");
 		
+		// Connect
 		this.clientChannel = this.bootstrap.connect(this.hostAddress).awaitUninterruptibly().getChannel();
 	}
 	
@@ -140,7 +141,7 @@ public strictfp final class Client extends AbstractExecutionThreadService {
 					this.lock.wait();
 				}
 			}
-			catch (InterruptedException e) {
+			catch (final InterruptedException e) {
 				
 			}
 		}
@@ -180,6 +181,7 @@ public strictfp final class Client extends AbstractExecutionThreadService {
 			
 			Preconditions.checkArgument(transaction != null);
 			
+			// Check the outputs
 			final Set<Address> addresses = new HashSet<Address>(this.targetAddresses);
 			
 			for (final TransactionOutput i : transaction.getOutputs()) {
@@ -216,7 +218,7 @@ public strictfp final class Client extends AbstractExecutionThreadService {
 			
 			if (addresses.isEmpty()) {
 				
-				return true; // TODO: Check inputs?
+				return true; 
 			}
 			else {
 				
@@ -245,6 +247,7 @@ public strictfp final class Client extends AbstractExecutionThreadService {
 			
 			System.out.println("Connected to host. ");
 			
+			// Send our information
 			e.getChannel().write(new MessagePlayerInput(source, targetAddresses));
 			
 			System.out.println("Sent input to host. ");
@@ -279,6 +282,7 @@ public strictfp final class Client extends AbstractExecutionThreadService {
 					System.out.println("The finished transaction: ");
 					System.out.println(m.getTransaction().toString());
 					
+					// Store the final transaction in the wallet
 					wallet.commitTx(m.getTransaction());
 					wallet.saveToFile(walletFile);
 					

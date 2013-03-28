@@ -8,7 +8,7 @@ from viff.util import rand, find_prime
 
 from optparse import OptionParser
 
-from random import getrandbits
+import random
 
 from twisted.internet import reactor
 
@@ -27,7 +27,7 @@ options, args = parser.parse_args()
 
 if len(args) != 3:
     
-    parser.error("wrong number of arguments")
+    parser.error("Wrong number of arguments. Use config, target address, output file")
 
 parser = OptionParser()
 
@@ -40,7 +40,7 @@ address = args[1]
 
 out = args[2]
 
-protocol = Protocol(id, address, getrandbits(32), out) # This is NOT random. Replace with SSL after testing. 
+protocol = Protocol(id, address, random.SystemRandom().getrandbits(32), out)
 
 
 pre_runtime = create_runtime(id, players, (len(players) - 1)//2, runtime_class=Toft07Runtime)

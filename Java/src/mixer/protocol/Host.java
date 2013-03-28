@@ -161,18 +161,22 @@ public strictfp final class Host extends AbstractIdleService {
 			Preconditions.checkState(!this.targetAddresses.isEmpty(), "There are no target addresses. ");
 			Preconditions.checkState(MixerUtils.isUniform(this.targetAddresses.values()), "Players do not agree on the target addresses. ");
 			
+			// Create a new transation
 			this.transaction = new Transaction(this.networkParameters);
 			
+			// Add each source address as an input
 			for (final TransactionOutput i : this.sourceAddresses.values()) {
 				
 				this.transaction.addInput(i);
 			}
 			
+			// Add the target addresses as outputs
 			for (final Address i : this.targetAddresses.get(0)) { // We can just grab the first because uniformity is checked already
 				
 				this.transaction.addOutput(this.amount, i);
 			}
 			
+			// Send everyone the partial transaction
 			for (final HostHandler i : this.hostHandlers) {
 				
 				i.sendPartialTransaction(this.transaction);
@@ -188,6 +192,7 @@ public strictfp final class Host extends AbstractIdleService {
 			
 			Preconditions.checkState(this.transaction != null, "There is no partial transaction to finish. ");
 			
+			// Set the scripts
 			for (int i = 0; i < this.transaction.getInputs().size(); i++) {
 				
 				this.transaction.getInput(i).setScriptBytes(this.signatures.get(i));
@@ -197,6 +202,7 @@ public strictfp final class Host extends AbstractIdleService {
 			
 			System.out.println(this.transaction.toString());
 			
+			// Send everyone the finished transaction
 			for (final HostHandler i : this.hostHandlers) {
 				
 				i.sendTransaction(this.transaction);
@@ -229,7 +235,7 @@ public strictfp final class Host extends AbstractIdleService {
 		}
 		
 		@Override
-		public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e) throws Exception {
+		public void channelConnected(final ChannelHandlerContext ctx, final ChannelStateEvent e) throws Exception {
 			
 			super.channelConnected(ctx, e);
 			
@@ -244,7 +250,7 @@ public strictfp final class Host extends AbstractIdleService {
 		}
 		
 		@Override
-		public void messageReceived(ChannelHandlerContext ctx, MessageEvent e) throws Exception {
+		public void messageReceived(final ChannelHandlerContext ctx, final MessageEvent e) throws Exception {
 			
 			super.messageReceived(ctx, e);
 			
@@ -254,6 +260,7 @@ public strictfp final class Host extends AbstractIdleService {
 					
 					System.out.println("Received input from player " + this.index + ". ");
 					
+					// Check that we have not already received this message
 					Preconditions.checkState(this.inputLock.getAndSet(false), "Input has already been received from this player. ");
 					
 					MessagePlayerInput m = (MessagePlayerInput) e.getMessage();
@@ -261,11 +268,14 @@ public strictfp final class Host extends AbstractIdleService {
 					Preconditions.checkArgument(!sourceAddresses.containsKey(index));
 					Preconditions.checkArgument(!targetAddresses.containsKey(index));
 					
+					// Add the information to the host
 					sourceAddresses.put(this.index, m.getSource());
 					targetAddresses.put(this.index, m.getTargetAddresses());
 					
+					// Check for consistency
 					Preconditions.checkState(MixerUtils.isUniform(Host.this.targetAddresses.values()), "Players do not agree on the target addresses. ");
 					
+					// Are we done?
 					if (sourceAddresses.size() == playerCount) {
 						
 						constructAndBroadcastTransaction();
@@ -278,6 +288,7 @@ public strictfp final class Host extends AbstractIdleService {
 					
 					System.out.println("Received signature from player " + this.index + ". ");
 					
+					// Check that we have not already received this message
 					Preconditions.checkState(!this.inputLock.get(), "Input not yet received. ");
 					Preconditions.checkState(this.signatureLock.getAndSet(false), "A signature has already been received from this player. ");
 					
@@ -285,8 +296,10 @@ public strictfp final class Host extends AbstractIdleService {
 					
 					MessageSignature m = (MessageSignature) e.getMessage();
 					
+					// Add the information to the host
 					signatures.put(this.index, m.getSignature());
 					
+					// Are we done?
 					if (signatures.size() == playerCount) {
 						
 						finishAndOutputTransaction();
@@ -296,7 +309,7 @@ public strictfp final class Host extends AbstractIdleService {
 		}
 		
 		@Override
-		public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e) throws Exception {
+		public void exceptionCaught(final ChannelHandlerContext ctx, final ExceptionEvent e) throws Exception {
 			
 			System.err.println("There was an exception! ");
 			System.err.println("Cause: " + e.getCause().getMessage());
