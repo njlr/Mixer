@@ -20,6 +20,8 @@ Structure
 Running a Mix
 -
 
+**DISCLAIMER: The code is a proof-of-concept; a thorough code review is required before general use. **
+
 Generate the VIFF configs using */Mixer/GenerateConfigs.sh*. This takes a list of host-port pairs. 
 
 For a three party mix on localhost, use: 
@@ -52,5 +54,6 @@ For a three party mix of 1 Bitcoin on TestNet, with the host running on *HAL9000
 License
 -
 
-I would like to release this under the most permissive license possible, but there are some complications involving University of Edinburgh guidelines. I will update this once I find out more. 
+I would like to release this under the most permissive license possible, but there are some complications involving University of Edinburgh guidelines. 
+I will update this once I find out more. 
 
