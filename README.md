@@ -17,10 +17,13 @@ Structure
 
 */Mixer* contains the compiled code and the shell scripts required to link them together. 
 
-Running a Mix
+Disclaimer
 -
 
-**DISCLAIMER: The code is a proof-of-concept; a thorough code review is required before general use. **
+The code is a proof-of-concept only; a thorough code review is required before general use. 
+
+Running a Mix
+-
 
 Generate the VIFF configs using */Mixer/GenerateConfigs.sh*. This takes a list of host-port pairs. 
 
